@@ -6,6 +6,7 @@ import {
   Modal,
   StyleSheet,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,6 +30,7 @@ export default function ProdutorasScreen() {
 
   const [produtoras, setProdutoras] = useState<Produtora[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const [nome, setNome] = useState("");
   const [pais, setPais] = useState("");
@@ -49,24 +51,66 @@ export default function ProdutorasScreen() {
     fetchProdutoras();
   }, []);
 
-  const handleCriar = async () => {
+  const abrirModalCriacao = () => {
+    setSelectedId(null);
+    setNome("");
+    setPais("");
+    setAno("");
+    setModalVisible(true);
+  };
+
+  const abrirModalEdicao = (produtora: Produtora) => {
+    setSelectedId(produtora.id);
+    setNome(produtora.nome);
+    setPais(produtora.pais);
+    setAno(produtora.ano);
+    setModalVisible(true);
+  };
+
+  const fecharModal = () => {
+    setModalVisible(false);
+    setSelectedId(null);
+    setNome("");
+    setPais("");
+    setAno("");
+  };
+
+  const handleSalvar = async () => {
     if (!nome || !pais || !ano) {
       alert("Preencha todos os campos!");
       return;
     }
 
     try {
-      await db.runAsync(
-        "INSERT INTO produtoras (nome, pais, ano) VALUES (?, ?, ?)",
-        [nome, pais, ano],
-      );
-      setNome("");
-      setPais("");
-      setAno("");
-      setModalVisible(false);
+      if (selectedId) {
+        // Atualizar
+        await db.runAsync(
+          "UPDATE produtoras SET nome = ?, pais = ?, ano = ? WHERE id = ?",
+          [nome, pais, ano, selectedId],
+        );
+      } else {
+        // Criar
+        await db.runAsync(
+          "INSERT INTO produtoras (nome, pais, ano) VALUES (?, ?, ?)",
+          [nome, pais, ano],
+        );
+      }
+      fecharModal();
       fetchProdutoras();
     } catch (error) {
-      console.error("Erro ao criar produtora", error);
+      console.error("Erro ao salvar produtora", error);
+    }
+  };
+
+  const handleDeletar = async () => {
+    if (!selectedId) return;
+    try {
+      // Deletar
+      await db.runAsync("DELETE FROM produtoras WHERE id = ?", [selectedId]);
+      fecharModal();
+      fetchProdutoras();
+    } catch (error) {
+      console.error("Erro ao deletar produtora", error);
     }
   };
 
@@ -83,7 +127,7 @@ export default function ProdutorasScreen() {
       <View style={styles.header}>
         <ThemedText type="subtitle">Estúdios (Produtoras)</ThemedText>
         <View style={styles.botaoWrapper}>
-          <Button title=" + Adicionar " onPress={() => setModalVisible(true)} />
+          <Button title=" + Adicionar " onPress={abrirModalCriacao} />
         </View>
       </View>
 
@@ -97,14 +141,16 @@ export default function ProdutorasScreen() {
           </ThemedText>
         }
         renderItem={({ item }) => (
-          <View
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => abrirModalEdicao(item)}
             style={[styles.card, { backgroundColor: "rgba(150,150,150,0.1)" }]}
           >
             <ThemedText type="smallBold">{item.nome}</ThemedText>
             <ThemedText type="default">
               Origem: {item.pais} | Ano: {item.ano}
             </ThemedText>
-          </View>
+          </TouchableOpacity>
         )}
       />
 
@@ -114,7 +160,7 @@ export default function ProdutorasScreen() {
             style={[styles.modalContent, { backgroundColor: theme.background }]}
           >
             <ThemedText type="subtitle" style={{ marginBottom: 10 }}>
-              Nova Produtora
+              {selectedId ? "Editar Produtora" : "Nova Produtora"}
             </ThemedText>
 
             <TextInput
@@ -150,12 +196,28 @@ export default function ProdutorasScreen() {
             />
 
             <View style={styles.modalButtons}>
-              <Button
-                title="Cancelar"
-                color="#ff4444"
-                onPress={() => setModalVisible(false)}
-              />
-              <Button title="Salvar" onPress={handleCriar} />
+              <View style={styles.buttonWrapper}>
+                <Button
+                  title="Cancelar"
+                  color="#ff4444"
+                  onPress={fecharModal}
+                />
+              </View>
+              {selectedId && (
+                <View style={styles.buttonWrapper}>
+                  <Button
+                    title="Deletar"
+                    color="#ff8800"
+                    onPress={handleDeletar}
+                  />
+                </View>
+              )}
+              <View style={styles.buttonWrapper}>
+                <Button
+                  title={selectedId ? "Atualizar" : "Salvar"}
+                  onPress={handleSalvar}
+                />
+              </View>
             </View>
           </View>
         </View>
@@ -211,5 +273,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 10,
+    gap: 10,
+  },
+  buttonWrapper: {
+    flex: 1,
   },
 });

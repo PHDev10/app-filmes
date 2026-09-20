@@ -17,6 +17,15 @@ async function initializeDatabase(db: SQLiteDatabase) {
       ano TEXT NOT NULL
     );
   `);
+
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS filmes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      titulo TEXT NOT NULL,
+      duracao TEXT NOT NULL,
+      genero TEXT NOT NULL
+    );
+  `);
 }
 
 export default function TabLayout() {
