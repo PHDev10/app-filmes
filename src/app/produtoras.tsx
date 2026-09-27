@@ -1,6 +1,6 @@
-import { useRouter } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite";
-import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Button,
   FlatList,
@@ -14,50 +14,27 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BottomTabInset, Spacing } from "@/constants/theme";
 
-type Produtora = {
-  id: number;
-  nome: string;
-  pais: string;
-  ano: string;
-};
+type Produtora = { id: number; nome: string; pais: string; ano: string };
 
 export default function ProdutorasScreen() {
-  const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-
   const [produtoras, setProdutoras] = useState<Produtora[]>([]);
 
   const fetchProdutoras = async () => {
     try {
-      const result = await db.getAllAsync<Produtora>(
-        "SELECT * FROM produtoras ORDER BY id DESC",
-      );
-      setProdutoras(result);
+      const jsonValue = await AsyncStorage.getItem("@produtoras");
+      if (jsonValue != null) setProdutoras(JSON.parse(jsonValue));
     } catch (error) {
-      console.error("Erro ao buscar produtoras", error);
+      console.error("Erro ao ler produtoras do AsyncStorage", error);
     }
   };
 
-  useEffect(() => {
-    fetchProdutoras();
-  }, []);
-
-  const abrirModalCriacao = () => {
-    router.push("/produtora-form");
-  };
-
-  const abrirModalEdicao = (produtora: Produtora) => {
-    router.push({
-      pathname: "/produtora-form",
-      params: {
-        id: produtora.id,
-        nome: produtora.nome,
-        pais: produtora.pais,
-        ano: produtora.ano,
-      },
-    });
-  };
+  useFocusEffect(
+    useCallback(() => {
+      fetchProdutoras();
+    }, []),
+  );
 
   return (
     <ThemedView
@@ -72,7 +49,10 @@ export default function ProdutorasScreen() {
       <View style={styles.header}>
         <ThemedText type="subtitle">Estúdios (Produtoras)</ThemedText>
         <View style={styles.botaoWrapper}>
-          <Button title=" + Adicionar " onPress={abrirModalCriacao} />
+          <Button
+            title=" + Adicionar "
+            onPress={() => router.push("/produtora-form")}
+          />
         </View>
       </View>
 
@@ -82,13 +62,15 @@ export default function ProdutorasScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <ThemedText style={{ textAlign: "center" }}>
-            Nenhuma produtora cadastrada.
+            Nenhuma produtora no AsyncStorage.
           </ThemedText>
         }
         renderItem={({ item }) => (
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => abrirModalEdicao(item)}
+            onPress={() =>
+              router.push({ pathname: "/produtora-form", params: { ...item } })
+            }
             style={[styles.card, { backgroundColor: "rgba(150,150,150,0.1)" }]}
           >
             <ThemedText type="smallBold">{item.nome}</ThemedText>

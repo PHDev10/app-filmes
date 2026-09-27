@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Button, StyleSheet, TextInput, View } from "react-native";
@@ -12,7 +13,6 @@ export default function ProdutoraFormScreen() {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const router = useRouter();
-
   const params = useLocalSearchParams();
   const isEditing = !!params.id;
 
@@ -20,8 +20,38 @@ export default function ProdutoraFormScreen() {
   const [pais, setPais] = useState((params.pais as string) || "");
   const [ano, setAno] = useState((params.ano as string) || "");
 
-  const handleSalvar = () => {
-    router.back();
+  const handleSalvar = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem("@produtoras");
+      let produtoras = jsonValue != null ? JSON.parse(jsonValue) : [];
+
+      if (isEditing) {
+        produtoras = produtoras.map((p: any) =>
+          p.id === Number(params.id) ? { ...p, nome, pais, ano } : p,
+        );
+      } else {
+        produtoras.push({ id: Date.now(), nome, pais, ano });
+      }
+
+      await AsyncStorage.setItem("@produtoras", JSON.stringify(produtoras));
+      router.back();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeletar = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem("@produtoras");
+      if (jsonValue) {
+        let produtoras = JSON.parse(jsonValue);
+        produtoras = produtoras.filter((p: any) => p.id !== Number(params.id));
+        await AsyncStorage.setItem("@produtoras", JSON.stringify(produtoras));
+      }
+      router.back();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (
@@ -34,7 +64,6 @@ export default function ProdutoraFormScreen() {
       <ThemedText type="subtitle" style={styles.title}>
         {isEditing ? "Editar Produtora" : "Nova Produtora"}
       </ThemedText>
-
       <View style={styles.formContent}>
         <TextInput
           style={[styles.input, { color: theme.text, borderColor: theme.text }]}
@@ -69,11 +98,7 @@ export default function ProdutoraFormScreen() {
           </View>
           {isEditing && (
             <View style={styles.buttonWrapper}>
-              <Button
-                title="Deletar"
-                color="#ff8800"
-                onPress={() => router.back()}
-              />
+              <Button title="Deletar" color="#ff8800" onPress={handleDeletar} />
             </View>
           )}
           <View style={styles.buttonWrapper}>
