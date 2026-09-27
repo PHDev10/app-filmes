@@ -1,6 +1,6 @@
-import { useRouter } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite";
-import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   Button,
   FlatList,
@@ -14,50 +14,29 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BottomTabInset, Spacing } from "@/constants/theme";
 
-type Filme = {
-  id: number;
-  titulo: string;
-  duracao: string;
-  genero: string;
-};
+type Filme = { id: number; titulo: string; duracao: string; genero: string };
 
 export default function FilmesScreen() {
-  const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-
   const [filmes, setFilmes] = useState<Filme[]>([]);
 
   const fetchFilmes = async () => {
     try {
-      const result = await db.getAllAsync<Filme>(
-        "SELECT * FROM filmes ORDER BY id DESC",
-      );
-      setFilmes(result);
+      const jsonValue = await AsyncStorage.getItem("@filmes");
+      if (jsonValue != null) {
+        setFilmes(JSON.parse(jsonValue));
+      }
     } catch (error) {
-      console.error("Erro ao buscar filmes", error);
+      console.error("Erro ao ler filmes do AsyncStorage", error);
     }
   };
 
-  useEffect(() => {
-    fetchFilmes();
-  }, []);
-
-  const abrirModalCriacao = () => {
-    router.push("/filme-form");
-  };
-
-  const abrirModalEdicao = (filme: Filme) => {
-    router.push({
-      pathname: "/filme-form",
-      params: {
-        id: filme.id,
-        titulo: filme.titulo,
-        duracao: filme.duracao,
-        genero: filme.genero,
-      },
-    });
-  };
+  useFocusEffect(
+    useCallback(() => {
+      fetchFilmes();
+    }, []),
+  );
 
   return (
     <ThemedView
@@ -72,7 +51,10 @@ export default function FilmesScreen() {
       <View style={styles.header}>
         <ThemedText type="subtitle">Catálogo de Filmes</ThemedText>
         <View style={styles.botaoWrapper}>
-          <Button title=" + Adicionar " onPress={abrirModalCriacao} />
+          <Button
+            title=" + Adicionar "
+            onPress={() => router.push("/filme-form")}
+          />
         </View>
       </View>
 
@@ -82,13 +64,15 @@ export default function FilmesScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <ThemedText style={{ textAlign: "center" }}>
-            Nenhum filme cadastrado.
+            Nenhum filme salvo no AsyncStorage.
           </ThemedText>
         }
         renderItem={({ item }) => (
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => abrirModalEdicao(item)}
+            onPress={() =>
+              router.push({ pathname: "/filme-form", params: { ...item } })
+            }
             style={[styles.card, { backgroundColor: "rgba(150,150,150,0.1)" }]}
           >
             <ThemedText type="smallBold">{item.titulo}</ThemedText>
