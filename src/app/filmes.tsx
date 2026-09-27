@@ -1,11 +1,10 @@
+import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
   Button,
   FlatList,
-  Modal,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -14,7 +13,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BottomTabInset, Spacing } from "@/constants/theme";
-import { useTheme } from "@/hooks/use-theme";
 
 type Filme = {
   id: number;
@@ -26,15 +24,9 @@ type Filme = {
 export default function FilmesScreen() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
+  const router = useRouter();
 
   const [filmes, setFilmes] = useState<Filme[]>([]);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-
-  const [titulo, setTitulo] = useState("");
-  const [duracao, setDuracao] = useState("");
-  const [genero, setGenero] = useState("");
 
   const fetchFilmes = async () => {
     try {
@@ -52,66 +44,19 @@ export default function FilmesScreen() {
   }, []);
 
   const abrirModalCriacao = () => {
-    setSelectedId(null);
-    setTitulo("");
-    setDuracao("");
-    setGenero("");
-    setModalVisible(true);
+    router.push("/filme-form");
   };
 
   const abrirModalEdicao = (filme: Filme) => {
-    setSelectedId(filme.id);
-    setTitulo(filme.titulo);
-    setDuracao(filme.duracao);
-    setGenero(filme.genero);
-    setModalVisible(true);
-  };
-
-  const fecharModal = () => {
-    setModalVisible(false);
-    setSelectedId(null);
-    setTitulo("");
-    setDuracao("");
-    setGenero("");
-  };
-
-  const handleSalvar = async () => {
-    if (!titulo || !duracao || !genero) {
-      alert("Preencha todos os campos!");
-      return;
-    }
-
-    try {
-      if (selectedId) {
-        // Atualizar
-        await db.runAsync(
-          "UPDATE filmes SET titulo = ?, duracao = ?, genero = ? WHERE id = ?",
-          [titulo, duracao, genero, selectedId],
-        );
-      } else {
-        // Criar
-        await db.runAsync(
-          "INSERT INTO filmes (titulo, duracao, genero) VALUES (?, ?, ?)",
-          [titulo, duracao, genero],
-        );
-      }
-      fecharModal();
-      fetchFilmes();
-    } catch (error) {
-      console.error("Erro ao salvar filme", error);
-    }
-  };
-
-  const handleDeletar = async () => {
-    if (!selectedId) return;
-    try {
-      // Deletar
-      await db.runAsync("DELETE FROM filmes WHERE id = ?", [selectedId]);
-      fecharModal();
-      fetchFilmes();
-    } catch (error) {
-      console.error("Erro ao deletar filme", error);
-    }
+    router.push({
+      pathname: "/filme-form",
+      params: {
+        id: filme.id,
+        titulo: filme.titulo,
+        duracao: filme.duracao,
+        genero: filme.genero,
+      },
+    });
   };
 
   return (
@@ -153,83 +98,12 @@ export default function FilmesScreen() {
           </TouchableOpacity>
         )}
       />
-
-      <Modal visible={modalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View
-            style={[styles.modalContent, { backgroundColor: theme.background }]}
-          >
-            <ThemedText type="subtitle" style={{ marginBottom: 10 }}>
-              {selectedId ? "Editar Filme" : "Novo Filme"}
-            </ThemedText>
-
-            <TextInput
-              style={[
-                styles.input,
-                { color: theme.text, borderColor: theme.text },
-              ]}
-              placeholder="Título do Filme"
-              placeholderTextColor="#888"
-              value={titulo}
-              onChangeText={setTitulo}
-            />
-            <TextInput
-              style={[
-                styles.input,
-                { color: theme.text, borderColor: theme.text },
-              ]}
-              placeholder="Duração (ex: 2h 15m)"
-              placeholderTextColor="#888"
-              value={duracao}
-              onChangeText={setDuracao}
-            />
-            <TextInput
-              style={[
-                styles.input,
-                { color: theme.text, borderColor: theme.text },
-              ]}
-              placeholder="Gênero (ex: Ação, Drama)"
-              placeholderTextColor="#888"
-              value={genero}
-              onChangeText={setGenero}
-            />
-
-            <View style={styles.modalButtons}>
-              <View style={styles.buttonWrapper}>
-                <Button
-                  title="Cancelar"
-                  color="#ff4444"
-                  onPress={fecharModal}
-                />
-              </View>
-              {selectedId && (
-                <View style={styles.buttonWrapper}>
-                  <Button
-                    title="Deletar"
-                    color="#ff8800"
-                    onPress={handleDeletar}
-                  />
-                </View>
-              )}
-              <View style={styles.buttonWrapper}>
-                <Button
-                  title={selectedId ? "Atualizar" : "Salvar"}
-                  onPress={handleSalvar}
-                />
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-  },
+  container: { flex: 1, paddingHorizontal: Spacing.four },
   header: {
     flexDirection: "column",
     alignItems: "center",
@@ -238,43 +112,7 @@ const styles = StyleSheet.create({
     width: "100%",
     gap: Spacing.three,
   },
-  botaoWrapper: {
-    marginTop: 8,
-    alignItems: "center",
-    width: 200,
-  },
-  listContent: {
-    gap: Spacing.three,
-    paddingBottom: Spacing.six,
-  },
-  card: {
-    padding: Spacing.three,
-    borderRadius: Spacing.two,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.6)",
-    padding: 20,
-  },
-  modalContent: {
-    padding: 20,
-    borderRadius: 12,
-    gap: 15,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-    gap: 10,
-  },
-  buttonWrapper: {
-    flex: 1,
-  },
+  botaoWrapper: { marginTop: 8, alignItems: "center", width: 200 },
+  listContent: { gap: Spacing.three, paddingBottom: Spacing.six },
+  card: { padding: Spacing.three, borderRadius: Spacing.two },
 });
