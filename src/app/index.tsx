@@ -1,6 +1,6 @@
 import * as Location from "expo-location";
 import { useEffect, useState } from "react";
-import { Platform, StyleSheet } from "react-native";
+import { Button, Linking, Platform, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AnimatedIcon } from "@/components/animated-icon";
@@ -29,6 +29,13 @@ export default function HomeScreen() {
     })();
   }, []);
 
+  const abrirNoMapa = () => {
+    if (location) {
+      const url = `https://www.google.com/maps/search/?api=1&query=${location.coords.latitude},${location.coords.longitude}`;
+      Linking.openURL(url);
+    }
+  };
+
   let locationText = "Buscando satélite...";
   if (errorMsg) {
     locationText = errorMsg;
@@ -42,7 +49,7 @@ export default function HomeScreen() {
         <ThemedView style={styles.heroSection}>
           <AnimatedIcon />
           <ThemedText type="title" style={styles.title}>
-            App de Filmes de Pedro
+            App de Filmes
           </ThemedText>
         </ThemedView>
 
@@ -55,6 +62,17 @@ export default function HomeScreen() {
             title="Localização (GPS)"
             hint={<ThemedText type="code">{locationText}</ThemedText>}
           />
+
+          {location && (
+            <View style={styles.mapButtonWrapper}>
+              <Button
+                title="Ver no Google Maps"
+                onPress={abrirNoMapa}
+                color="#208AEF"
+              />
+            </View>
+          )}
+
           <HintRow
             title="Armazenamento"
             hint={<ThemedText type="small">AsyncStorage Ativado</ThemedText>}
@@ -92,5 +110,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.four,
     borderRadius: Spacing.four,
+  },
+  mapButtonWrapper: {
+    marginTop: -5,
+    marginBottom: 10,
+    paddingHorizontal: Spacing.four,
   },
 });
